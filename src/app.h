@@ -39,6 +39,7 @@ private:
     std::vector<VkImage> swapChainImages;
     vk::Format swapChainImageFormat;
     vk::Extent2D swapChainExtent;
+    std::vector<VkImageView> swapChainImageViews;
     void initVulkan() {
         createInstance();
         setupDebugMessenger();
@@ -46,6 +47,7 @@ private:
         pickPhysicalDevice();
         createLogicalDevice();
         createSwapChain();
+        createImageViews();
     }
     void createInstance() {
         if (enableValidationLayers && !checkValidationLayerSupport()) {
@@ -315,11 +317,27 @@ private:
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent = extent;
     }
+    void createImageViews() {
+        swapChainImageViews.resize(swapChainImages.size());
+        for (size_t i = 0; i < swapChainImages.size(); i++) {
+            auto createInfo = vk::ImageViewCreateInfo()
+        		.setImage(swapChainImages[i])
+        		.setViewType(vk::ImageViewType::e2D)
+        		.setFormat(swapChainImageFormat)
+        		.setComponents({vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity , vk::ComponentSwizzle::eIdentity , vk::ComponentSwizzle::eIdentity})
+        		.setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
+            swapChainImageViews[i] = device.createImageView(createInfo);
+        }
+
+    }
     void mainLoop() {
 
     }
 
     void cleanup() {
+        for (auto imageView : swapChainImageViews) {
+            device.destroyImageView(imageView);
+        }
         device.destroySwapchainKHR(swapChain);
         device.destroy();
         instance.destroySurfaceKHR(surface);
