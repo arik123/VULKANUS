@@ -1,3 +1,4 @@
+#include <fstream>
 #include <optional>
 #include <set>
 #include "Window.h"
@@ -36,7 +37,7 @@ private:
     vk::SurfaceKHR surface;
 	vk::Queue presentQueue;
     vk::SwapchainKHR swapChain;
-    std::vector<VkImage> swapChainImages;
+    std::vector<vk::Image> swapChainImages;
     vk::Format swapChainImageFormat;
     vk::Extent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
@@ -48,6 +49,7 @@ private:
         createLogicalDevice();
         createSwapChain();
         createImageViews();
+        createGraphicsPipeline();
     }
     void createInstance() {
         if (enableValidationLayers && !checkValidationLayerSupport()) {
@@ -330,6 +332,46 @@ private:
         }
 
     }
+    static std::vector<char> readFile(const std::string& filename) {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+        if (!file.is_open()) {
+            throw std::runtime_error("failed to open file!");
+        }
+        size_t fileSize = (size_t)file.tellg();
+        std::vector<char> buffer(fileSize);
+        file.seekg(0);
+        file.read(buffer.data(), fileSize);
+        file.close();
+
+        return buffer;
+    }
+    vk::ShaderModule createShaderModule(const std::vector<char>& code) {
+        auto createInfo = vk::ShaderModuleCreateInfo()
+    		.setCodeSize(code.size())
+    		.setPCode(reinterpret_cast<const uint32_t*>(code.data()));
+        return device.createShaderModule(createInfo);
+    }
+	void createGraphicsPipeline() {
+        auto vertShaderCode = readFile("shaders/vert.spv");
+        auto fragShaderCode = readFile("shaders/frag.spv");
+        VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+        VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+        auto vertShaderStageInfo  = vk::PipelineShaderStageCreateInfo()
+    		.setStage(vk::ShaderStageFlagBits::eVertex)
+    		.setModule(vertShaderModule)
+    		.setPName("main");
+        auto fragShaderStageInfo = vk::PipelineShaderStageCreateInfo()
+            .setStage(vk::ShaderStageFlagBits::eFragment)
+            .setModule(fragShaderModule)
+            .setPName("main");
+        vk::PipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+    	
+        vkDestroyShaderModule(device, fragShaderModule, nullptr);
+        vkDestroyShaderModule(device, vertShaderModule, nullptr);
+    }
+	
     void mainLoop() {
 
     }

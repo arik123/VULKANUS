@@ -17,3 +17,7 @@ target_include_directories(VulkanTest1 PRIVATE ${Vulkan_INCLUDE_DIRS})
 
 target_link_libraries(VulkanTest1 PRIVATE glm)
 TARGET_LINK_LIBRARIES(VulkanTest1 PUBLIC ${Vulkan_LIBRARIES})
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/frag.spv ${CMAKE_CURRENT_BINARY_DIR}/shaders/frag.spv COPYONLY)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/vert.spv ${CMAKE_CURRENT_BINARY_DIR}/shaders/vert.spv COPYONLY)
