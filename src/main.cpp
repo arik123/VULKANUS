@@ -19,15 +19,4 @@ int main(int argc, char** argv, char* envp[])
 	}
 
 	return EXIT_SUCCESS;
-	std::cout << "hello world\n";
-	
-	uint32_t extensionCount = 0;
-	vk::enumerateInstanceExtensionProperties();
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-
-	std::cout << extensionCount << " extensions supported\n";
-
-	glm::mat4 matrix;
-	glm::vec4 vec;
-	auto test = matrix * vec;
 }

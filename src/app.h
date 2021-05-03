@@ -34,13 +34,18 @@ private:
     vk::Device device;
 	vk::Queue graphicsQueue;
     vk::SurfaceKHR surface;
-	vk::Queue presentQueue
+	vk::Queue presentQueue;
+    vk::SwapchainKHR swapChain;
+    std::vector<VkImage> swapChainImages;
+    vk::Format swapChainImageFormat;
+    vk::Extent2D swapChainExtent;
     void initVulkan() {
         createInstance();
         setupDebugMessenger();
         createSurface();
         pickPhysicalDevice();
         createLogicalDevice();
+        createSwapChain();
     }
     void createInstance() {
         if (enableValidationLayers && !checkValidationLayerSupport()) {
@@ -185,8 +190,6 @@ private:
         uint32_t queueFamilyCount = 0;
     	
 		auto queueFamilies = device.getQueueFamilyProperties();
-        
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
         int i = 0;
         for (const auto& queueFamily : queueFamilies) {
             if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
@@ -254,14 +257,70 @@ private:
         }
         return vk::PresentModeKHR::eFifo;
     }
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
+    vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities) {
+        if (capabilities.currentExtent.width != UINT32_MAX) return capabilities.currentExtent;
+        RECT window;
+        GetClientRect(wnd.getHandle(), &window); //WINDOWS
+        const int width = window.right, height = window.bottom;
 
+        vk::Extent2D actualExtent = {
+            static_cast<uint32_t>(width),
+            static_cast<uint32_t>(height)
+        };
+
+        actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
+        actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+
+        return actualExtent;
+    }
+    void createSwapChain() {
+        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+
+        vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+        vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+        vk::Extent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+            imageCount = swapChainSupport.capabilities.maxImageCount;
+        }
+        auto createInfo = vk::SwapchainCreateInfoKHR()
+            .setSurface(surface)
+    		.setMinImageCount(imageCount)
+    		.setImageFormat(surfaceFormat.format)
+    		.setImageColorSpace(surfaceFormat.colorSpace)
+    		.setImageExtent(extent)
+    		.setImageArrayLayers(1)
+    		.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
+    		.setPreTransform(swapChainSupport.capabilities.currentTransform)
+    		.setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
+    		.setPresentMode(presentMode)
+    		.setClipped(1)
+    		.setOldSwapchain(nullptr);
+    	    	
+        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+
+        if (indices.graphicsFamily != indices.presentFamily) {
+            createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+            createInfo.queueFamilyIndexCount = 2;
+            createInfo.pQueueFamilyIndices = queueFamilyIndices;
+        }
+        else {
+            createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+        }
+
+        swapChain = device.createSwapchainKHR(createInfo);
+        swapChainImages = device.getSwapchainImagesKHR(swapChain);
+        swapChainImageFormat = surfaceFormat.format;
+        swapChainExtent = extent;
     }
     void mainLoop() {
 
     }
 
     void cleanup() {
+        device.destroySwapchainKHR(swapChain);
         device.destroy();
         instance.destroySurfaceKHR(surface);
     	if (enableValidationLayers)
