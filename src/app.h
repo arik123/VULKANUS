@@ -65,7 +65,7 @@ private:
         auto createInfo = vk::InstanceCreateInfo()
             .setPApplicationInfo(&app_info_info)
             .setPEnabledExtensionNames(reqExtensions)
-            .setPEnabledLayerNames(validationLayers);
+            .setPEnabledLayerNames({});
     	
         if (enableValidationLayers) {
             createInfo.setPEnabledLayerNames(validationLayers);
@@ -76,11 +76,6 @@ private:
         instance = vk::createInstance(createInfo);
         dynamicDispatcher = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
         auto extensions = vk::enumerateInstanceExtensionProperties();
-        std::cout << "available extensions:\n";
-
-        for (const auto& extension : extensions) {
-            std::cout << '\t' << extension.extensionName << '\n';
-        }
     }
     bool checkValidationLayerSupport() {
         auto availableLayers = vk::enumerateInstanceLayerProperties();
@@ -163,7 +158,7 @@ private:
     	
         auto win32SurfaceCreateInfo = vk::Win32SurfaceCreateInfoKHR()
             .setHwnd(wnd.getHandle())
-            .setHinstance(GetModuleHandle(NULL));
+            .setHinstance(GetModuleHandle(nullptr));
         surface = instance.createWin32SurfaceKHR(win32SurfaceCreateInfo);
     }
     void pickPhysicalDevice() {
@@ -233,6 +228,10 @@ private:
             .setQueueCreateInfos(queueCreateInfos)
     		.setPEnabledFeatures(&deviceFeatures)
     		.setPEnabledExtensionNames(deviceExtensions);
+        if (enableValidationLayers)
+        {
+            createInfo.setPEnabledLayerNames(validationLayers);
+        }
         device = physicalDevice.createDevice(createInfo);
         graphicsQueue = device.getQueue(indices.graphicsFamily.value(), 0);
         presentQueue = device.getQueue(indices.presentFamily.value(), 0);
@@ -342,7 +341,7 @@ private:
         if (!file.is_open()) {
             throw std::runtime_error("failed to open file!");
         }
-        size_t fileSize = (size_t)file.tellg();
+        size_t fileSize = static_cast<size_t>(file.tellg());
         std::vector<char> buffer(fileSize);
         file.seekg(0);
         file.read(buffer.data(), fileSize);
@@ -380,8 +379,8 @@ private:
 	void createGraphicsPipeline() {
         auto vertShaderCode = readFile("shaders/vert.spv");
         auto fragShaderCode = readFile("shaders/frag.spv");
-        VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-        VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+        vk::ShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+        vk::ShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
         auto vertShaderStageInfo  = vk::PipelineShaderStageCreateInfo()
     		.setStage(vk::ShaderStageFlagBits::eVertex)
