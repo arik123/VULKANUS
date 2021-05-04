@@ -41,6 +41,9 @@ private:
     vk::Format swapChainImageFormat;
     vk::Extent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
+    vk::RenderPass renderPass;
+	vk::PipelineLayout pipelineLayout;
+    vk::Pipeline graphicsPipeline;
     void initVulkan() {
         createInstance();
         setupDebugMessenger();
@@ -49,6 +52,7 @@ private:
         createLogicalDevice();
         createSwapChain();
         createImageViews();
+        createRenderPass();
         createGraphicsPipeline();
     }
     void createInstance() {
@@ -352,6 +356,27 @@ private:
     		.setPCode(reinterpret_cast<const uint32_t*>(code.data()));
         return device.createShaderModule(createInfo);
     }
+	void createRenderPass() {
+        auto colorAttachment = vk::AttachmentDescription()
+            .setFormat(swapChainImageFormat)
+            .setSamples(vk::SampleCountFlagBits::e1)
+            .setLoadOp(vk::AttachmentLoadOp::eClear)
+            .setStoreOp(vk::AttachmentStoreOp::eStore)
+            .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+            .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+    		.setInitialLayout(vk::ImageLayout::eUndefined)
+    		.setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
+        auto colorAttachmentRef = vk::AttachmentReference()
+    		.setAttachment(0)
+    		.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
+        auto subpass = vk::SubpassDescription()
+            .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+            .setColorAttachments(colorAttachmentRef);
+        auto renderPassInfo = vk::RenderPassCreateInfo()
+            .setAttachments(colorAttachment)
+            .setSubpasses(subpass);
+        renderPass = device.createRenderPass(renderPassInfo);
+    }
 	void createGraphicsPipeline() {
         auto vertShaderCode = readFile("shaders/vert.spv");
         auto fragShaderCode = readFile("shaders/frag.spv");
@@ -366,10 +391,72 @@ private:
             .setStage(vk::ShaderStageFlagBits::eFragment)
             .setModule(fragShaderModule)
             .setPName("main");
-        vk::PipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+		std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
     	
         vkDestroyShaderModule(device, fragShaderModule, nullptr);
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
+
+        auto vertexInputInfo = vk::PipelineVertexInputStateCreateInfo()
+    		.setVertexBindingDescriptionCount(0)
+    		.setVertexAttributeDescriptionCount(0);
+        auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo()
+    		.setTopology(vk::PrimitiveTopology::eTriangleList)
+    		.setPrimitiveRestartEnable(0);
+        auto viewport = vk::Viewport()
+            .setX(0.0f)
+			.setY(0.0f)
+    		.setWidth(static_cast<float>(swapChainExtent.width))
+			.setHeight(static_cast<float>(swapChainExtent.height))
+    		.setMinDepth(0.0f)
+    		.setMaxDepth(1.0f);
+        auto scissor = vk::Rect2D()
+            .setOffset({ 0,0 })
+            .setExtent(swapChainExtent);
+        auto viewportState = vk::PipelineViewportStateCreateInfo()
+    		.setViewports(viewport)
+    		.setScissors(scissor);
+        auto rasterizer = vk::PipelineRasterizationStateCreateInfo()
+            .setDepthClampEnable(0)
+            .setRasterizerDiscardEnable(0)
+            .setPolygonMode(vk::PolygonMode::eFill) //TODO: eLine for wireframe, needs enabling feature
+            .setLineWidth(1.0f)
+    		.setCullMode(vk::CullModeFlagBits::eBack)
+    		.setFrontFace(vk::FrontFace::eClockwise)
+    		.setDepthBiasEnable(0);
+        auto multisampling = vk::PipelineMultisampleStateCreateInfo()
+            .setSampleShadingEnable(0)
+    		.setRasterizationSamples(vk::SampleCountFlagBits::e1);
+        auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
+            .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG 
+                | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
+            .setBlendEnable(0);
+        auto colorBlending = vk::PipelineColorBlendStateCreateInfo()
+            .setLogicOpEnable(0)
+    		.setAttachments(colorBlendAttachment);
+    	std::array<vk::DynamicState, 2> dynamicStates = {
+			vk::DynamicState::eViewport,
+			vk::DynamicState::eLineWidth
+        };
+        auto dynamicState = vk::PipelineDynamicStateCreateInfo()
+            .setDynamicStates(dynamicStates);
+        auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
+            .setSetLayouts({})
+            .setPushConstantRanges({});
+        pipelineLayout = device.createPipelineLayout(pipelineLayoutInfo);
+        auto pipelineInfo = vk::GraphicsPipelineCreateInfo()
+            .setStages(shaderStages)
+            .setPVertexInputState(&vertexInputInfo)
+            .setPInputAssemblyState(&inputAssembly)
+            .setPViewportState(&viewportState)
+            .setPRasterizationState(&rasterizer)
+            .setPMultisampleState(&multisampling)
+            .setPDepthStencilState(nullptr)
+    		.setPColorBlendState(&colorBlending)
+    		.setPDynamicState(nullptr)
+    		.setLayout(pipelineLayout)
+    		.setRenderPass(renderPass)
+    		.setSubpass(0);
+        graphicsPipeline = device.createGraphicsPipeline({}, pipelineInfo).value;
     }
 	
     void mainLoop() {
@@ -377,6 +464,9 @@ private:
     }
 
     void cleanup() {
+        device.destroyPipeline(graphicsPipeline);
+        device.destroyPipelineLayout(pipelineLayout);
+        device.destroyRenderPass(renderPass);
         for (auto imageView : swapChainImageViews) {
             device.destroyImageView(imageView);
         }
