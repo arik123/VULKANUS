@@ -1,11 +1,6 @@
 #include <iostream>
-#define VK_USE_PLATFORM_WIN32_KHR
-#include <vulkan/vulkan.hpp>
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
 #include "app.h"
+
 int main(int argc, char** argv, char* envp[])
 {
 	HelloTriangleApplication app;
