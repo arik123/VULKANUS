@@ -81,3 +81,33 @@ void Window::destroy()
         windowHandle = nullptr;
     }
 }
+void Window::pollEvents()
+{
+    MSG msg;
+
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+    {
+        if (msg.message == WM_QUIT)
+        {
+            printf("Recieved quit");
+            close = true;
+            return;
+        }
+        else if (msg.message == WM_CLOSE)
+        {
+            printf("Recieved close");
+            close = true;
+            return;
+        }
+        else
+        {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+    }
+    return;
+}
+bool Window::shouldClose()
+{
+    return close;
+}

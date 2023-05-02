@@ -21,6 +21,7 @@
 class Window
 {
 private:
+	bool close = false;
 	bool windowResized;
 	HWND windowHandle = nullptr;
 	LPCWSTR WindowName;
@@ -39,5 +40,7 @@ public:
 	std::tuple< uint32_t, uint32_t> getSize();
 	inline bool hasResized();
 	void destroy();
+	void pollEvents();
+	bool shouldClose();
 };
 

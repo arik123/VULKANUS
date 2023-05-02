@@ -18,9 +18,6 @@
 
 #include "Window.h"
 
-const uint32_t WIDTH = 800;
-const uint32_t HEIGHT = 600;
-
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::vector<const char*> validationLayers = {
@@ -118,6 +115,11 @@ private:
             drawFrame();
         }
         */
+        while (!window.shouldClose())
+        {
+            drawFrame();
+            window.pollEvents();
+        }
         device.waitIdle();
     }
 
@@ -534,7 +536,7 @@ private:
             commandBuffers[i].draw(3, 1, 0, 0);
             commandBuffers[i].endRenderPass();
 
-            commandBuffers.end();
+            commandBuffers[i].end();
         }
     }
 
